@@ -43,10 +43,10 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.5.0
           
@@ -115,7 +115,7 @@ jobs:
           TF_VAR_subnet_id: ${{ secrets[format('SUBNET_ID_{0}', github.event.inputs.environment || 'dev')] }}
           
       - name: Upload Terraform Plan
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always() && steps.plan.outcome == 'success'
         with:
           name: terraform-plan-${{ github.event.inputs.environment || 'dev' }}
