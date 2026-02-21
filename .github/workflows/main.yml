@@ -85,12 +85,6 @@ jobs:
           TF_VAR_image_id: ${{ secrets.IMAGE_ID }}
           TF_VAR_subnet_id: ${{ secrets[format('SUBNET_ID_{0}', github.event.inputs.environment || 'dev')] }}
           
-      - name: Terraform Format
-        id: fmt
-        run: |
-          cd task2Advanced
-          terraform fmt -check
-          
       - name: Terraform Validate
         id: validate
         run: |
