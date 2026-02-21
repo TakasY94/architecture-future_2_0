@@ -1,0 +1,47 @@
+# Local Terraform files
+*.tfvars
+*.tfvars.json
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+
+# Terraform lock file
+.terraform.lock.hcl
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Exclude all .terraform directories
+**/.terraform/*
+
+# Exclude override files you have generated; see https://learn.hashicorp.com/tutorials/terraform/automate-terraform#generate-configuration
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Include tfplan files to ignore the plan output of command: terraform plan -out=tfplan
+# example: *tfplan*
+
+# Ignore CLI configuration files
+.terraformrc
+terraform.rc
+
+# Local backend configuration
+backend-config.hcl
+
+# Terraform plan files
+terraform-plan
+*.tfplan
+
+# Local test files
+dev.tfvars
+stage.tfvars
+prod.tfvars
+
+# Sensitive data
+*.pem
+*.key
+*.cert

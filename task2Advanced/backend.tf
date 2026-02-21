@@ -23,8 +23,5 @@ terraform {
     use_path_style              = true
     skip_requesting_account_id  = true
 
-    # Опционально: блокировка состояния через DynamoDB-совместимую таблицу
-    # dynamodb_endpoint = "https://docapi.serverless.yandexcloud.net/ru-central1"
-    # dynamodb_table    = "terraform-locks"
   }
 }
