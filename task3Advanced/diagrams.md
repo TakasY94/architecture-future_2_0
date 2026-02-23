@@ -28,6 +28,8 @@ graph TB
         subgraph "Инфраструктура"
             event_bus[Event Bus<br/>Apache Kafka]
             cache[Кэш<br/>Redis]
+            data_quality[Data Quality Tools<br/>Great Expectations, Deequ]
+            data_lineage[Data Lineage<br/>OpenLineage, Marquez]
         end
         
         subgraph "Хранилища данных"
@@ -38,8 +40,14 @@ graph TB
         end
     end
     
+    subgraph "Интеграционный слой"
+        legacy_adapters[Легаси адаптеры<br/>Java/Spring Integration<br/>CDC, трансформации, ФЛК]
+        partner_gateways[Шлюзы партнеров<br/>REST/SOAP адаптеры]
+        schema_registry[Schema Registry<br/>Контракты данных]
+    end
+    
     subgraph "Внешние системы"
-        legacy[Легаси системы<br/>SQL Server, PowerBuilder, Camel]
+        legacy[Легаси системы<br/>SQL Server, PowerBuilder, Camel ESB]
         partners[Внешние партнеры<br/>Фармацевтические компании, банки]
     end
     
@@ -64,12 +72,20 @@ graph TB
     
     analytics --> data_lake
     analytics --> data_warehouse
+    analytics --> data_quality
+    analytics --> data_lineage
     
     medical --> cache
     financial --> cache
     
-    platform -.-> legacy
-    platform -.-> partners
+    legacy --> legacy_adapters
+    partners --> partner_gateways
+    
+    legacy_adapters --> event_bus
+    partner_gateways --> event_bus
+    
+    legacy_adapters --> schema_registry
+    partner_gateways --> schema_registry
     
     style patient fill:#e1f5fe
     style staff fill:#e1f5fe
@@ -86,6 +102,11 @@ graph TB
     style data_warehouse fill:#ffebee
     style event_bus fill:#f3e5f5
     style cache fill:#f3e5f5
+    style data_quality fill:#e1f5fe
+    style data_lineage fill:#e1f5fe
+    style legacy_adapters fill:#e0f2f1
+    style partner_gateways fill:#e0f2f1
+    style schema_registry fill:#e0f2f1
     style legacy fill:#f5f5f5
     style partners fill:#f5f5f5
 ```
@@ -299,12 +320,13 @@ graph TB
 1. **Веб-портал самообслуживания** - Single Page Application для бизнес-пользователей
 2. **API Gateway** - Единая точка входа для всех клиентских запросов
 3. **Event Bus** (Kafka/Pulsar) - Центральная шина событий для междоменного взаимодействия
-4. **Медицинский домен** - Микросервисы для управления медицинскими данными
-5. **Финансовый домен** - Микросервисы для банковских и финтех-операций
-6. **ИИ-сервисы домен** - Сервисы машинного обучения и аналитики
-7. **Аналитический домен** - Обработка данных и формирование отчётов
-8. **Data Lake** - Централизованное хранилище сырых данных
-9. **Data Warehouse** - Оптимизированное хранилище для аналитики
+4. **Интеграционный слой** - Легаси-адаптеры и шлюзы партнеров для трансформации, валидации (ФЛК) и протокольной адаптации
+5. **Медицинский домен** - Микросервисы для управления медицинскими данными
+6. **Финансовый домен** - Микросервисы для банковских и финтех-операций
+7. **ИИ-сервисы домен** - Сервисы машинного обучения и аналитики
+8. **Аналитический домен** - Обработка данных и формирование отчётов
+9. **Data Lake** - Централизованное хранилище сырых данных
+10. **Data Warehouse** - Оптимизированное хранилище для аналитики
 
 ### Компоненты C4-модели (Уровень 3)
 
@@ -346,6 +368,8 @@ graph TB
 - **Apache Iceberg** (Data Lake формат)
 - **ClickHouse** (OLAP для аналитики)
 - **Redis** (кэширование)
+- **Инструменты качества данных** (Great Expectations, Deequ) - валидация и мониторинг качества данных
+- **Data lineage** (OpenLineage, Marquez) - отслеживание происхождения и трансформаций данных
 
 #### Бэкенд-технологии:
 - **Java/Spring Boot** (основные бизнес-сервисы)
@@ -369,7 +393,7 @@ graph TB
 #### Ключевые изменения:
 - Замена SQL Server 2008 на современные СУБД
 - Миграция с PowerBuilder на React-интерфейсы
-- Замена Apache Camel на Kafka для интеграций
+- Реорганизация интеграционного слоя: переход от ESB на базе Apache Camel к event-driven архитектуре с Kafka как транспортом и распределением интеграционной логики по доменным сервисам
 - Внедрение Data Lake вместо монолитного DWH
 - Реализация self-service аналитики через портал
 
