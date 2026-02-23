@@ -1,0 +1,162 @@
+name: Terraform CI/CD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'task2Advanced/**'
+      - '.github/workflows/terraform-ci.yml'
+  
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'task2Advanced/**'
+  
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
+      action:
+        description: 'Terraform action to perform'
+        required: true
+        default: 'plan'
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+
+jobs:
+  terraform:
+    name: Terraform ${{ github.event.inputs.environment || 'dev' }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+          
+      - name: Create backend configuration file
+        run: |
+          cd task2Advanced
+          echo "Creating backend-config.hcl for environment: ${{ github.event.inputs.environment || 'dev' }}"
+          cat > backend-config.hcl << EOF
+          bucket     = "terraform-state-${{ github.event.inputs.environment || 'dev' }}"
+          access_key = "${{ secrets.YC_ACCESS_KEY }}"
+          secret_key = "${{ secrets.YC_SECRET_KEY }}"
+          EOF
+          
+          echo "Backend configuration file content:"
+          cat backend-config.hcl
+          echo ""
+          
+      - name: Terraform Init
+        id: init
+        run: |
+          cd task2Advanced
+          echo "Running terraform init with backend-config..."
+          echo "Environment: ${{ github.event.inputs.environment || 'dev' }}"
+          echo "Backend config file exists: $(test -f backend-config.hcl && echo 'Yes' || echo 'No')"
+          
+          # Выполняем terraform init с подробным выводом
+          terraform init -backend-config=backend-config.hcl -input=false
+        env:
+          TF_VAR_environment: ${{ github.event.inputs.environment || 'dev' }}
+          TF_VAR_yc_token: ${{ secrets.YC_TOKEN }}
+          TF_VAR_yc_cloud_id: ${{ secrets.YC_CLOUD_ID }}
+          TF_VAR_yc_folder_id: ${{ secrets[format('YC_FOLDER_ID_{0}', github.event.inputs.environment || 'dev')] }}
+          TF_VAR_yc_access_key: ${{ secrets.YC_ACCESS_KEY }}
+          TF_VAR_yc_secret_key: ${{ secrets.YC_SECRET_KEY }}
+          TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+          TF_VAR_image_id: ${{ secrets.IMAGE_ID }}
+          TF_VAR_subnet_id: ${{ secrets[format('SUBNET_ID_{0}', github.event.inputs.environment || 'dev')] }}
+
+      - name: Terraform Validate
+        id: validate
+        run: |
+          cd task2Advanced
+          terraform validate
+          
+      - name: Terraform Plan
+        id: plan
+        if: github.event_name == 'pull_request' || github.event.inputs.action == 'plan'
+        run: |
+          cd task2Advanced
+          terraform plan \
+            -var="environment=${{ github.event.inputs.environment || 'dev' }}" \
+            -out=terraform-plan
+        env:
+          TF_VAR_environment: ${{ github.event.inputs.environment || 'dev' }}
+          TF_VAR_yc_token: ${{ secrets.YC_TOKEN }}
+          TF_VAR_yc_cloud_id: ${{ secrets.YC_CLOUD_ID }}
+          TF_VAR_yc_folder_id: ${{ secrets[format('YC_FOLDER_ID_{0}', github.event.inputs.environment || 'dev')] }}
+          TF_VAR_yc_access_key: ${{ secrets.YC_ACCESS_KEY }}
+          TF_VAR_yc_secret_key: ${{ secrets.YC_SECRET_KEY }}
+          TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+          TF_VAR_image_id: ${{ secrets.IMAGE_ID }}
+          TF_VAR_subnet_id: ${{ secrets[format('SUBNET_ID_{0}', github.event.inputs.environment || 'dev')] }}
+          
+      - name: Upload Terraform Plan
+        uses: actions/upload-artifact@v4
+        if: always() && steps.plan.outcome == 'success'
+        with:
+          name: terraform-plan-${{ github.event.inputs.environment || 'dev' }}
+          path: task2Advanced/terraform-plan
+          
+      - name: Terraform Apply
+        id: apply
+        if: |
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply') ||
+          (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        run: |
+          cd task2Advanced
+          terraform apply -auto-approve \
+            -var="environment=${{ github.event.inputs.environment || 'dev' }}"
+        env:
+          TF_VAR_environment: ${{ github.event.inputs.environment || 'dev' }}
+          TF_VAR_yc_token: ${{ secrets.YC_TOKEN }}
+          TF_VAR_yc_cloud_id: ${{ secrets.YC_CLOUD_ID }}
+          TF_VAR_yc_folder_id: ${{ secrets[format('YC_FOLDER_ID_{0}', github.event.inputs.environment || 'dev')] }}
+          TF_VAR_yc_access_key: ${{ secrets.YC_ACCESS_KEY }}
+          TF_VAR_yc_secret_key: ${{ secrets.YC_SECRET_KEY }}
+          TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+          TF_VAR_image_id: ${{ secrets.IMAGE_ID }}
+          TF_VAR_subnet_id: ${{ secrets[format('SUBNET_ID_{0}', github.event.inputs.environment || 'dev')] }}
+          
+      - name: Terraform Destroy
+        id: destroy
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
+        run: |
+          cd task2Advanced
+          terraform destroy -auto-approve \
+            -var="environment=${{ github.event.inputs.environment || 'dev' }}"
+        env:
+          TF_VAR_environment: ${{ github.event.inputs.environment || 'dev' }}
+          TF_VAR_yc_token: ${{ secrets.YC_TOKEN }}
+          TF_VAR_yc_cloud_id: ${{ secrets.YC_CLOUD_ID }}
+          TF_VAR_yc_folder_id: ${{ secrets[format('YC_FOLDER_ID_{0}', github.event.inputs.environment || 'dev')] }}
+          TF_VAR_yc_access_key: ${{ secrets.YC_ACCESS_KEY }}
+          TF_VAR_yc_secret_key: ${{ secrets.YC_SECRET_KEY }}
+          TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+          TF_VAR_image_id: ${{ secrets.IMAGE_ID }}
+          TF_VAR_subnet_id: ${{ secrets[format('SUBNET_ID_{0}', github.event.inputs.environment || 'dev')] }}
+          
+      - name: Cleanup backend configuration
+        if: always()
+        run: |
+          cd task2Advanced
+          rm -f backend-config.hcl
